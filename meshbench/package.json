@@ -1,0 +1,18 @@
+{
+  "name": "meshbench",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Meshbench: offline, single-file mesh prep and presentation for 3D printing (STL, OBJ, 3MF).",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test test/*.test.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "check": "npm run test && npm run build && npm run smoke"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "playwright-core": "^1.63.0",
+    "three": "^0.186.0"
+  }
+}

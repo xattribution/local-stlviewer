@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Meshbench — prep and present meshes for 3D printing</title>
+<style>
+/*__STYLES__*/
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="topbar">
+    <div class="brand">Meshbench <span>prep &amp; present for printing</span></div>
+    <div class="group">
+      <button class="primary" id="btn-open" title="Open STL, OBJ or 3MF (O)">Open files</button>
+      <select id="import-units" title="Units the incoming file was saved in">
+        <option value="1">Import as mm</option><option value="10">Import as cm</option><option value="25.4">Import as inches</option><option value="1000">Import as meters</option>
+      </select>
+      <select id="sample-select" title="Add a procedural sample part">
+        <option value="">Sample part…</option><option value="knob">Knob (watertight, revolved)</option><option value="bracket">Bracket (3 overlapping shells)</option><option value="box">Calibration cube 20 mm</option>
+      </select>
+    </div>
+    <div class="grow"></div>
+    <div class="group">
+      <button id="btn-undo" title="Undo (Ctrl+Z)" disabled>Undo</button>
+      <button id="btn-redo" title="Redo (Ctrl+Y)" disabled>Redo</button>
+      <button id="btn-save" title="Save project (Ctrl+S)">Save project</button>
+      <button id="btn-openproj" title="Open a saved .mbench.json project">Open project</button>
+      <button class="quiet" id="btn-present" title="Hide panels for a clean view (Tab)">Present</button>
+      <button class="quiet" id="btn-help" title="Keyboard shortcuts (?)">?</button>
+    </div>
+    <input type="file" id="file-input" class="hidden" multiple accept=".stl,.obj,.3mf,.json,.mbench">
+  </header>
+
+  <aside id="left">
+    <div class="panel-head">Parts <span class="count" id="parts-count"></span><span class="grow"></span><button class="quiet small" id="btn-showall" title="Show all parts">Show all</button></div>
+    <div id="dropzone"><b>Drop STL, OBJ or 3MF files here</b>or click to browse. Everything stays on this device.</div>
+    <div id="parts"></div>
+    <div class="left-actions">
+      <button id="btn-dup" title="Duplicate selected (Ctrl+D)">Duplicate</button>
+      <button id="btn-rename" title="Rename selected (F2)">Rename</button>
+      <button class="danger" id="btn-del" title="Delete selected (Delete)">Delete</button>
+    </div>
+  </aside>
+
+  <main id="center">
+    <canvas id="viewport" tabindex="0"></canvas>
+    <div id="empty-hint"><div><b>No parts loaded</b>Open STL, OBJ or 3MF files, drop them anywhere, or pick a sample part.</div></div>
+    <div class="overlay" id="tools">
+      <button data-tool="select" class="on" title="Select (Q)"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M4 2l10 7-4.5 1.2L7 15z"/></svg></button>
+      <button data-tool="move" title="Move (G)"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 2v14M2 9h14M9 2l-2.5 2.5M9 2l2.5 2.5M9 16l-2.5-2.5M9 16l2.5-2.5M2 9l2.5-2.5M2 9l2.5 2.5M16 9l-2.5-2.5M16 9l-2.5 2.5"/></svg></button>
+      <button data-tool="rotate" title="Rotate (R)"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 9a6 6 0 1 1-2-4.5M13 2v3h-3"/></svg></button>
+      <button data-tool="scale" title="Scale (S)"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 15V9M3 15h6M3 15L15 3M15 3h-5M15 3v5"/></svg></button>
+      <button data-tool="lay" title="Lay flat: click the face that should sit on the bed (L)"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2 15h14M9 3l5 4-5 4-5-4z"/><path d="M9 11v3" stroke-dasharray="1.5 1.5"/></svg></button>
+      <button data-tool="mate" title="Mate faces: click a face on the fixed part, then a face on the part to move (T)"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2 4h6v10H2zM10 4h6v10h-6z"/><path d="M8 9h2" stroke-width="2"/></svg></button>
+      <button data-tool="measure" title="Measure: click two points, snaps to vertices (M)"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 13L13 2l3 3L5 16z M5 10l1.5 1.5M8 7l1.5 1.5M11 4l1.5 1.5"/></svg></button>
+    </div>
+    <div class="overlay" id="views">
+      <button data-view="iso">Iso</button><button data-view="top">Top</button><button data-view="front">Front</button><button data-view="right">Right</button>
+      <button id="btn-fit" title="Fit view (F)">Fit</button>
+      <button id="btn-ortho" title="Orthographic (P)">Ortho</button>
+      <button id="btn-bed" class="on" title="Show bed">Bed</button>
+    </div>
+    <div class="overlay" id="dims"></div>
+    <div id="hint">Drag to orbit · right-drag to pan · scroll to zoom</div>
+    <div id="busy" class="hidden">Working…</div>
+    <div id="shortcuts" class="hidden">
+      <div class="card">
+        <h3>Keyboard shortcuts</h3>
+        <div class="kv">
+          <span class="k">Select / Move / Rotate / Scale</span><span class="v"><kbd>Q</kbd> <kbd>G</kbd> <kbd>R</kbd> <kbd>S</kbd></span>
+          <span class="k">Lay flat / Mate faces / Measure</span><span class="v"><kbd>L</kbd> <kbd>T</kbd> <kbd>M</kbd></span>
+          <span class="k">Fit view / Orthographic</span><span class="v"><kbd>F</kbd> <kbd>P</kbd></span>
+          <span class="k">Views</span><span class="v"><kbd>1</kbd> iso <kbd>2</kbd> top <kbd>3</kbd> front <kbd>4</kbd> right</span>
+          <span class="k">Drop to bed / Center</span><span class="v"><kbd>B</kbd> <kbd>C</kbd></span>
+          <span class="k">Toggle section / Present mode</span><span class="v"><kbd>X</kbd> <kbd>Tab</kbd></span>
+          <span class="k">Nudge selection (Shift = 1 mm)</span><span class="v"><kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> <kbd>PgUp</kbd> <kbd>PgDn</kbd></span>
+          <span class="k">Undo / Redo</span><span class="v"><kbd>Ctrl+Z</kbd> <kbd>Ctrl+Y</kbd></span>
+          <span class="k">Duplicate / Delete / Rename / Hide</span><span class="v"><kbd>Ctrl+D</kbd> <kbd>Del</kbd> <kbd>F2</kbd> <kbd>H</kbd></span>
+          <span class="k">Open files / Save project</span><span class="v"><kbd>O</kbd> <kbd>Ctrl+S</kbd></span>
+          <span class="k">Select all / none</span><span class="v"><kbd>Ctrl+A</kbd> <kbd>Esc</kbd></span>
+        </div>
+        <p class="small faint">Meshbench v__MESHBENCH_VERSION__ · three.js r__THREE_VERSION__ · runs entirely in this browser tab, no uploads.</p>
+        <div class="btns" style="margin-top:8px"><button id="btn-help-close">Close</button></div>
+      </div>
+    </div>
+  </main>
+
+  <aside id="right">
+    <div id="tabs">
+      <button data-tab="inspect" class="on">Inspect</button><button data-tab="modify">Modify</button><button data-tab="print">Print</button><button data-tab="render">Render</button><button data-tab="export">Export</button>
+    </div>
+
+    <!-- ================= INSPECT ================= -->
+    <div class="tab on" id="tab-inspect">
+      <div class="sec">
+        <h3><span id="insp-name">No selection</span></h3>
+        <div class="kv" id="insp-kv"></div>
+      </div>
+      <div class="sec">
+        <h3>Mesh check <span id="insp-badge"></span></h3>
+        <div class="check" id="check-list"></div>
+        <p class="small" id="check-note">Edges are welded at 0.0001 mm. Passing every check means the mesh is closed and consistently oriented; it does not rule out self-intersections.</p>
+        <div class="btns">
+          <button id="btn-clean" title="Remove degenerate and duplicate triangles">Remove bad triangles</button>
+          <button id="btn-fill" title="Cap boundary loops with flat triangles">Fill holes</button>
+          <button id="btn-unify" title="Make winding consistent and turn inside-out shells right side out">Fix normals</button>
+        </div>
+      </div>
+      <div class="sec">
+        <h3>Display</h3>
+        <div class="lens" id="lens">
+          <button data-lens="solid" class="on">Solid</button><button data-lens="wire">Wireframe</button><button data-lens="xray">X-ray</button>
+          <button data-lens="shells">Shells</button><button data-lens="overhang">Overhang</button><button data-lens="thickness">Wall thickness</button>
+        </div>
+        <div class="row" id="overhang-row"><label>Overhang angle from vertical</label><input type="number" id="overhang-angle" value="45" min="10" max="89" step="1"><span class="muted">°</span></div>
+        <div class="row" id="thick-row"><label>Thin below</label><input type="number" id="thick-limit" value="1.2" min="0.1" step="0.1"><span class="muted">mm</span><button id="btn-thick">Run</button></div>
+        <p class="small" id="thick-note"></p>
+      </div>
+      <div class="sec">
+        <h3>Section view</h3>
+        <div class="row"><label><input type="checkbox" id="sec-on">Cut away above a plane</label><select id="sec-axis"><option value="2">Z</option><option value="0">X</option><option value="1">Y</option></select></div>
+        <input type="range" id="sec-slider" min="0" max="1000" value="500">
+        <div class="row"><label>Plane position</label><input type="number" id="sec-pos" step="0.1"><span class="muted">mm</span></div>
+        <div class="btns"><button id="btn-sec-svg">Export outline as SVG</button></div>
+        <p class="small">The outline is the true cross-section of the selected part; SVG is 1 unit = 1 mm.</p>
+      </div>
+      <div class="sec">
+        <h3>Measurements <span class="right"><button class="quiet small" id="btn-measure-clear">Clear</button></span></h3>
+        <div class="list measure-list" id="measure-list"><div class="empty">Use the measure tool and click two points on any part.</div></div>
+      </div>
+    </div>
+
+    <!-- ================= MODIFY ================= -->
+    <div class="tab" id="tab-modify">
+      <div class="sec disabled-when-empty" id="xform-sec">
+        <h3>Transform <span class="right" id="xform-target"></span></h3>
+        <div class="grid3"><span></span><span class="h">X</span><span class="h">Y</span><span class="h">Z</span>
+          <label>Position</label><input type="number" data-x="p0" step="0.1"><input type="number" data-x="p1" step="0.1"><input type="number" data-x="p2" step="0.1">
+          <label>Rotation °</label><input type="number" data-x="r0" step="1"><input type="number" data-x="r1" step="1"><input type="number" data-x="r2" step="1">
+          <label>Size mm</label><input type="number" data-x="s0" step="0.1" min="0.01"><input type="number" data-x="s1" step="0.1" min="0.01"><input type="number" data-x="s2" step="0.1" min="0.01">
+        </div>
+        <div class="row"><label><input type="checkbox" id="lock-ratio" checked>Keep proportions when sizing</label><input type="number" id="scale-pct" value="100" step="1" min="1"><span class="muted">%</span></div>
+        <div class="row"><label><input type="checkbox" id="snap-on" checked>Snap gizmo to 1 mm / 15° / 5 %</label></div>
+        <div class="btns">
+          <button id="btn-drop">Drop to bed</button><button id="btn-center">Center on bed</button><button id="btn-reset">Reset transform</button>
+        </div>
+        <div class="btns">
+          <button id="btn-rot-x" title="Rotate 90° about X">X 90°</button><button id="btn-rot-y" title="Rotate 90° about Y">Y 90°</button><button id="btn-rot-z" title="Rotate 90° about Z">Z 90°</button>
+        </div>
+        <div class="btns">
+          <button id="btn-mirror-x">Mirror X</button><button id="btn-mirror-y">Mirror Y</button><button id="btn-mirror-z">Mirror Z</button>
+        </div>
+        <div class="btns">
+          <button id="btn-inch" title="Rescale ×25.4 for files saved in inches">Inches → mm</button>
+          <button id="btn-flip" title="Reverse triangle winding">Flip normals</button>
+          <button id="btn-bake" title="Write the current position, rotation and scale into the mesh">Apply transform to mesh</button>
+        </div>
+      </div>
+
+      <div class="sec disabled-when-empty" id="mate-sec">
+        <h3>Mate faces</h3>
+        <p class="small">With the mate tool, click a flat face on the part that stays put, then a face on the part to move. The second part is rotated and slid so the two faces touch.</p>
+        <div class="row"><label>Gap between faces</label><input type="number" id="mate-gap" value="0" step="0.1"><span class="muted">mm</span></div>
+        <div class="row"><span class="small" id="mate-status">No face picked.</span><span class="grow"></span><button class="small" id="btn-mate-clear">Clear</button></div>
+      </div>
+
+      <div class="sec disabled-when-empty" id="cut-sec">
+        <h3>Cut on a plane</h3>
+        <div class="row"><label>Axis</label><select id="cut-axis"><option value="2">Z (horizontal)</option><option value="0">X</option><option value="1">Y</option></select></div>
+        <input type="range" id="cut-slider" min="0" max="1000" value="500">
+        <div class="row"><label>Position</label><input type="number" id="cut-pos" step="0.1"><span class="muted">mm</span></div>
+        <div class="row"><label>Tilt</label><input type="number" id="cut-tilt" value="0" step="1" min="-89" max="89"><span class="muted">°</span></div>
+        <div class="row"><label>Keep</label><select id="cut-keep"><option value="both">Both halves</option><option value="above">Above only</option><option value="below">Below only</option></select></div>
+        <div class="row"><label><input type="checkbox" id="cut-preview" checked>Show plane</label><label><input type="checkbox" id="cut-flip" checked>Lay halves cut-face down</label></div>
+        <div class="row"><label><input type="checkbox" id="pin-on" checked>Add alignment pin pockets to both faces</label></div>
+        <div id="pin-opts">
+          <div class="row tight"><label>Pins</label><input type="number" id="pin-count" value="2" min="1" max="6" step="1"></div>
+          <div class="row tight"><label>Pin diameter</label><input type="number" id="pin-dia" value="4" min="1" step="0.5"><span class="muted">mm</span></div>
+          <div class="row tight"><label>Pocket depth (each side)</label><input type="number" id="pin-depth" value="6" min="1" step="0.5"><span class="muted">mm</span></div>
+          <div class="row tight"><label>Pocket clearance</label><input type="number" id="pin-clear" value="0.15" min="0" step="0.05"><span class="muted">mm</span></div>
+          <div class="row tight"><label><input type="checkbox" id="pin-part" checked>Also add the pin as a part</label></div>
+        </div>
+        <div class="btns"><button class="primary" id="btn-cut">Cut part</button></div>
+        <p class="small">Both halves are capped flat and stay closed if the original is closed. Overlapping shells are capped one by one. Pockets are only placed where the material is deep enough.</p>
+      </div>
+
+      <div class="sec disabled-when-empty" id="shell-sec">
+        <h3>Shells and parts</h3>
+        <div class="btns col">
+          <button id="btn-split">Separate into shells <span class="muted" id="shell-count-hint"></span></button>
+          <button id="btn-merge">Combine selected parts into one</button>
+        </div>
+        <p class="small">Combining keeps every triangle as-is (no boolean union). Separating uses shared-edge connectivity.</p>
+      </div>
+    </div>
+
+    <!-- ================= PRINT ================= -->
+    <div class="tab" id="tab-print">
+      <div class="sec">
+        <h3>Printer bed</h3>
+        <div class="row"><label>Preset</label><select id="bed-preset">
+          <option value="256,256,256">Bambu X1 / P1 (256³)</option><option value="180,180,180">Bambu A1 mini (180³)</option><option value="250,210,220">Prusa MK4 / MK3 (250×210×220)</option>
+          <option value="180,180,180">Prusa Mini (180³)</option><option value="220,220,250">Ender 3 (220×220×250)</option><option value="300,300,400">300×300×400</option><option value="350,350,350">350³</option><option value="custom">Custom</option>
+        </select></div>
+        <div class="grid3"><label>Size mm</label><input type="number" id="bed-w" value="256" step="1"><input type="number" id="bed-d" value="256" step="1"><input type="number" id="bed-h" value="256" step="1"><span></span><span class="h">width</span><span class="h">depth</span><span class="h">height</span></div>
+        <div id="fit-report" class="kv"></div>
+        <div class="btns"><button id="btn-arrange">Arrange all parts on bed</button><button id="btn-dropall">Drop all to bed</button></div>
+        <div class="row"><label>Spacing between parts</label><input type="number" id="arrange-gap" value="6" min="0" step="1"><span class="muted">mm</span></div>
+      </div>
+      <div class="sec disabled-when-empty" id="orient-sec">
+        <h3>Orientation</h3>
+        <p>Ranks candidate orientations by overhang area, bed contact and height at the current overhang angle. A heuristic, not a slicer.</p>
+        <div class="btns"><button id="btn-orient">Rank orientations</button></div>
+        <div class="list" id="orient-list"></div>
+      </div>
+      <div class="sec disabled-when-empty" id="material-sec">
+        <h3>Material estimate</h3>
+        <div class="row"><label>Filament</label><select id="material">
+          <option value="1.24">PLA</option><option value="1.27">PETG</option><option value="1.04">ABS</option><option value="1.07">ASA</option><option value="1.21">TPU</option><option value="1.14">Nylon</option><option value="1.20">Resin</option>
+        </select></div>
+        <div class="row"><label>Infill</label><input type="number" id="infill" value="15" min="0" max="100" step="5"><span class="muted">%</span></div>
+        <div class="row"><label>Walls (perimeters × width)</label><input type="number" id="wall" value="1.2" min="0.4" step="0.4"><span class="muted">mm</span></div>
+        <div class="row"><label>Filament price</label><input type="number" id="price" value="22" min="0" step="1"><span class="muted">per kg</span></div>
+        <div class="kv" id="material-kv"></div>
+        <p class="small">The infill estimate treats surface area × wall thickness as solid and the remaining interior at the infill fraction. Slicer results will differ.</p>
+      </div>
+    </div>
+
+    <!-- ================= RENDER ================= -->
+    <div class="tab" id="tab-render">
+      <div class="sec">
+        <h3>Finish <span class="right" id="finish-target"></span></h3>
+        <div class="presets" id="finish-presets"></div>
+        <p class="small" id="finish-note"></p>
+      </div>
+      <div class="sec">
+        <h3>Colour</h3>
+        <div class="swatches" id="swatches"></div>
+        <div class="row"><label>Custom</label><input type="color" id="finish-color" value="#e8e6e1"><input type="text" id="finish-hex" value="#e8e6e1" spellcheck="false" style="width:84px;flex:none"></div>
+        <div class="row"><label>Translucency</label><input type="range" id="finish-trans" min="0" max="100" value="0"><span class="muted num" id="finish-trans-v" style="width:34px;text-align:right">0%</span></div>
+        <div class="row"><label>Surface</label><input type="range" id="finish-rough" min="0" max="100" value="50"><span class="muted small" style="width:56px">gloss ↔ matte</span></div>
+        <div class="btns"><button id="btn-finish-all">Apply to all parts</button></div>
+      </div>
+      <div class="sec">
+        <h3>Layer lines</h3>
+        <div class="row"><label><input type="checkbox" id="layers-on" checked>Show printed layer lines</label><select id="layer-h"><option value="0.12">0.12 mm</option><option value="0.16">0.16 mm</option><option value="0.2" selected>0.20 mm</option><option value="0.28">0.28 mm</option></select></div>
+        <div class="row"><label>Strength</label><input type="range" id="layer-str" min="0" max="100" value="45"></div>
+      </div>
+      <div class="sec">
+        <h3>Studio</h3>
+        <div class="row"><label>Backdrop</label><select id="backdrop"><option value="studio">Studio grey</option><option value="warm">Warm paper</option><option value="white">Pure white</option><option value="dark">Charcoal</option><option value="transparent">Transparent</option></select></div>
+        <div class="row"><label>Lighting</label><select id="lighting"><option value="soft">Soft box</option><option value="contrast">Contrast key light</option><option value="rim">Rim light</option></select></div>
+        <div class="row"><label>Exposure</label><input type="range" id="exposure" min="40" max="180" value="100"></div>
+        <div class="row"><label><input type="checkbox" id="ground-shadow" checked>Ground shadow</label><label><input type="checkbox" id="show-floor" checked>Floor</label></div>
+        <div class="row"><label><input type="checkbox" id="turntable">Turntable</label><input type="range" id="turntable-speed" min="1" max="10" value="4"></div>
+        <div class="row"><label><input type="checkbox" id="smooth-on" checked>Smooth shading (creased at 40°)</label></div>
+      </div>
+      <div class="sec">
+        <h3>Export image</h3>
+        <div class="row"><label>Resolution</label><select id="png-scale"><option value="1">Viewport (1×)</option><option value="2" selected>2×</option><option value="3">3×</option><option value="4">4× (large)</option></select></div>
+        <div class="btns"><button class="primary" id="btn-render-png">Save PNG</button><button id="btn-render-clip" title="Copy to clipboard">Copy</button></div>
+        <p class="small">Transparent backdrop saves a PNG with alpha, ready for slides or listings. Press <kbd>Tab</kbd> to hide the panels while you frame the shot.</p>
+      </div>
+    </div>
+
+    <!-- ================= EXPORT ================= -->
+    <div class="tab" id="tab-export">
+      <div class="sec">
+        <h3>STL (binary)</h3>
+        <div class="btns col">
+          <button id="exp-stl-sel">Selected part(s), one file each</button>
+          <button id="exp-stl-merged">All visible parts merged into one STL</button>
+        </div>
+        <p class="small">Exports use world coordinates in mm: transforms are applied, and a positive-mm bed placement is kept.</p>
+      </div>
+      <div class="sec">
+        <h3>3MF</h3>
+        <div class="btns col"><button class="primary" id="exp-3mf">All visible parts as one 3MF</button></div>
+        <p class="small">Each part becomes a separate object with its name, so slicers open it as a multi-part plate.</p>
+      </div>
+      <div class="sec">
+        <h3>Other</h3>
+        <div class="btns col">
+          <button id="exp-svg">Section outline as SVG</button>
+          <button id="exp-png">Viewport as PNG</button>
+          <button id="exp-report">Mesh report as text</button>
+        </div>
+      </div>
+      <div class="sec">
+        <h3>Project</h3>
+        <div class="btns"><button id="exp-proj">Save project</button><button id="exp-openproj">Open project</button></div>
+        <p class="small">A project file holds every part's geometry, name, finish and placement, plus the bed and studio settings. Nothing is uploaded anywhere.</p>
+      </div>
+    </div>
+  </aside>
+
+  <footer id="statusbar">
+    <span id="status-msg">Ready</span>
+    <span class="grow"></span>
+    <span id="status-sel"></span>
+    <span id="status-totals"></span>
+    <span class="faint">Local only — no network</span>
+  </footer>
+</div>
+<!--__WORKER__-->
+<!--__APP__-->
+</body>
+</html>
