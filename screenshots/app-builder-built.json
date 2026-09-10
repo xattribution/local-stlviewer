@@ -1,0 +1,41 @@
+{
+  "url": "http://127.0.0.1:8081/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "DATUM",
+      "hasCanvas": true,
+      "bodyTextLen": 614,
+      "bodyTextHash": "42b03eb7f2c4d25cb05497a33844d324bdc1e1c7865e3a0748c8b0ba1d5f1f56",
+      "bodyTextPrefix": "DATUM MESH WORKBENCH X — Y — Z — MM — Open Kit PARTS 0 Drop STL ",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "DATUM",
+      "hasCanvas": true,
+      "bodyTextLen": 169,
+      "bodyTextHash": "d9b4a073205f3e169d151959f7561497a295a3be209d034d977590fd29203360",
+      "bodyTextPrefix": "DATUM X — Y — Z — Drop STL to the plate Multi-part assemblies, p",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built-mobile.png"
+    }
+  },
+  "brandWarnings": [
+    "BRAND WARNING: this looks like a game/canvas app but src/lib/og/site.json is missing \"type\": \"x:game\". X uses og:type=x:game to present the unfurl as a game card — set it in /workspace/src/lib/og/site.json per /workspace/.grok/skills/og/SKILL.md. Do not invent x:type or overload twitter:card as the game signal.",
+    "BRAND WARNING: this looks like a game/canvas app but /workspace/public/x-banner.jpg is missing. Games need a 50:11 X feed card (1200×264 JPEG) at public/x-banner.jpg — open /workspace/.grok/skills/og/SKILL.md and finish the brand-asset pass."
+  ],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-built.json",
+  "divergesFromBaseline": false,
+  "baselineReasons": []
+}

@@ -1,0 +1,157 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --color-bg: #09090b;
+  --color-surface: #121214;
+  --color-surface-2: #19191c;
+  --color-fg: #ecece8;
+  --color-muted: #8c8c93;
+  --color-faint: #5c5c64;
+  --color-line: #222226;
+  --color-accent: #d0d4db;
+  --color-accent-fg: #0a0a0b;
+  --color-danger: #c45c4a;
+  --color-ok: #6a9a7a;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  --text-2xs: 0.6875rem;
+  --text-dro: 1.125rem;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html,
+  body,
+  #app {
+    height: 100%;
+    background: var(--color-bg);
+    color: var(--color-fg);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    opacity: 0;
+  }
+}
+
+@layer components {
+  .hud-label {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-faint);
+  }
+
+  .dro-num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+    letter-spacing: -0.03em;
+  }
+
+  details.panel > summary {
+    list-style: none;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+    padding: 8px 0;
+    user-select: none;
+  }
+
+  details.panel > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  details.panel > summary::after {
+    content: "+";
+    float: right;
+    color: var(--color-faint);
+  }
+
+  details.panel[open] > summary::after {
+    content: "–";
+  }
+
+  .field {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 28px;
+  }
+
+  .field label {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xs);
+    letter-spacing: 0.1em;
+    color: var(--color-faint);
+    width: 14px;
+    flex-shrink: 0;
+  }
+
+  .field input[type="number"],
+  .field input[type="text"] {
+    width: 100%;
+    height: 28px;
+    border: 1px solid var(--color-line);
+    background: var(--color-bg);
+    color: var(--color-fg);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    padding: 0 8px;
+  }
+
+  .field input:focus {
+    outline: none;
+    border-color: color-mix(in oklab, var(--color-accent) 50%, var(--color-line));
+  }
+
+  input[type="range"] {
+    accent-color: var(--color-accent);
+    width: 100%;
+  }
+
+  input[type="color"] {
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--color-line);
+    background: transparent;
+    padding: 0;
+    border-radius: var(--radius-sm);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
