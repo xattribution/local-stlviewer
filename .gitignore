@@ -3,3 +3,11 @@ node_modules/
 .github_repo
 .env
 .env.*
+
+# meshbench (offline single-file app) — build inputs and smoke-test scratch files
+meshbench/node_modules/
+meshbench/screenshots/bracket.stl
+meshbench/screenshots/open-box.stl
+meshbench/screenshots/roundtrip.mbench.json
+meshbench/screenshots/export-2x.png
+meshbench/screenshots/failure.png
